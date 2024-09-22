@@ -1,2 +1,2 @@
 ## Event-Driven Data Ingestion into Snowflake - Powered by Azure Event Hub, Argo Events, and Argo Workflows
-![architecture](https://github.com/user-attachments/assets/6b7d2ba9-aa6c-4ae8-a761-0ecac22a3fec)
+![architecture](https://github.com/user-attachments/assets/c37fd0af-aa9a-432c-9add-da76e24cb7a1)
