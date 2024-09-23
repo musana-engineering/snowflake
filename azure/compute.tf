@@ -7,6 +7,12 @@ resource "azurerm_storage_account" "sa" {
   is_hns_enabled           = true
   sftp_enabled             = true
 
+  network_rules {
+    default_action             = "Deny"
+    ip_rules                   = local.firewall_whitelist
+    virtual_network_subnet_ids = [data.azurerm_subnet.core.id]
+  }
+
   identity {
     type = "SystemAssigned"
   }
@@ -15,14 +21,6 @@ resource "azurerm_storage_account" "sa" {
 }
 
 resource "azurerm_storage_container" "blob" {
-  name                  = "snowdatalake"
-  storage_account_name  = azurerm_storage_account.sa.name
-  container_access_type = "private"
-
-  depends_on = [azurerm_storage_account.sa]
-}
-
-resource "azurerm_storage_container" "file" {
   name                  = "snowdatalake"
   storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "private"

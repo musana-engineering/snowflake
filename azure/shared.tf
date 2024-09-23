@@ -8,7 +8,8 @@ locals {
   storage_account_name     = "sasnowpoceus2"
   event_hub_namespace_name = "evhnsnowpoceus2"
   eventhub_name            = "evhsnowpoceus2"
-  firewall_whitelist       = ["54.39.28.200", "54.39.137.255"]
+  firewall_whitelist = ["54.39.28.200", "54.39.137.255",
+  "8.29.228.126", "8.29.109.138", "20.57.125.64/28"]
 
   tags = {
     provisioner = "terraform"
