@@ -17,6 +17,14 @@ resource "azurerm_eventhub_namespace" "evh" {
       ip_mask = "20.10.173.253"
       action  = "Allow"
     }
+    ip_rule {
+      ip_mask = "8.29.109.138"
+      action  = "Allow"
+    }
+    ip_rule {
+      ip_mask = "2a09:bac0:1001:fb::c:356"
+      action  = "Allow"
+    }
   }
 
   identity {
@@ -78,6 +86,10 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "snowflake" {
   system_topic         = azurerm_eventgrid_system_topic.snowflake.name
   resource_group_name  = azurerm_resource_group.rg.name
   eventhub_endpoint_id = azurerm_eventhub.snowflake.id
+
+  delivery_identity {
+    type = "SystemAssigned"
+  }
   depends_on = [azurerm_eventhub_namespace.evh,
   azurerm_eventhub.snowflake]
 }
