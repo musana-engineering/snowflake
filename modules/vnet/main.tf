@@ -64,14 +64,8 @@ resource "azurerm_subnet_network_security_group_association" "nsg" {
   depends_on = [azurerm_subnet.subnet, azurerm_network_security_group.nsg]
 }
 
-resource "azurerm_private_dns_zone" "core" {
-  for_each            = toset(var.private_dns_zones)
-  name                = each.value
-  resource_group_name = var.resource_group_name
-}
-
 data "azurerm_virtual_network" "vnet" {
-  name                = "vnet-musana-eng"
+  name                = var.virtual_network_name
   resource_group_name = var.resource_group_name
 
   depends_on = [azurerm_virtual_network.vnet]
@@ -79,19 +73,22 @@ data "azurerm_virtual_network" "vnet" {
 
 data "azurerm_subnet" "aks" {
   name                 = "snet-core"
-  virtual_network_name = "vnet-musana-eng"
+  virtual_network_name = var.virtual_network_name
   resource_group_name  = var.resource_group_name
   depends_on           = [azurerm_subnet.subnet, azurerm_virtual_network.vnet]
 }
 
+
 resource "azurerm_private_dns_zone_virtual_network_link" "core" {
-  for_each              = toset(var.private_dns_zones)
-  name                  = "vnet-musana-eng"
-  resource_group_name   = var.resource_group_name
-  private_dns_zone_name = each.value
-  virtual_network_id    = data.azurerm_virtual_network.vnet.id
-  tags                  = var.tags
-  depends_on = [azurerm_virtual_network.vnet,
-  azurerm_private_dns_zone.core]
+  count                = length(var.private_dns_zones)
+  name                 = var.virtual_network_name
+  resource_group_name  = var.dns_zone_resource_group
+  private_dns_zone_name = var.private_dns_zones[count.index]
+  virtual_network_id   = data.azurerm_virtual_network.vnet.id
+
+  depends_on = [
+    azurerm_virtual_network.vnet
+  ]
 }
+
 
