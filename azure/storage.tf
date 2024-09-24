@@ -16,15 +16,15 @@ resource "azurerm_storage_account" "sa" {
     virtual_network_subnet_ids = [data.azurerm_subnet.core.id, data.azurerm_subnet.management.id]
 
     private_link_access {
+      endpoint_resource_id = "/subscriptions/${local.subscription_id}/resourcegroups/*/providers/Microsoft.EventGrid/domains/*"
+      endpoint_tenant_id   = local.tenant_id
+    }
+    private_link_access {
       endpoint_resource_id = "/subscriptions/${local.subscription_id}/resourcegroups/*/providers/Microsoft.EventGrid/systemTopics/*"
       endpoint_tenant_id   = local.tenant_id
     }
     private_link_access {
       endpoint_resource_id = "/subscriptions/${local.subscription_id}/resourcegroups/*/providers/Microsoft.EventGrid/topics/*"
-      endpoint_tenant_id   = local.tenant_id
-    }
-    private_link_access {
-      endpoint_resource_id = "/subscriptions/${local.subscription_id}/resourcegroups/*/providers/Microsoft.EventGrid/domains/*"
       endpoint_tenant_id   = local.tenant_id
     }
   }

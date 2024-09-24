@@ -1,3 +1,4 @@
+// TERRAFORM PROVIDER CONFIG
 terraform {
   required_providers {
     azurerm = {
@@ -7,13 +8,11 @@ terraform {
   }
 }
 
-
 provider "azurerm" {
-  features {
-
-  }
+  features {}
 }
 
+// LOCALS
 locals {
   region                   = "eastus2"
   tenant_id                = "de5b2627-b190-44c6-a3dc-11c4294198e1"
@@ -35,6 +34,7 @@ locals {
   }
 }
 
+// RESOURCE GROUP
 resource "azurerm_resource_group" "rg" {
   name     = local.resource_group_name
   location = local.region
