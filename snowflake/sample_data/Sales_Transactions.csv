@@ -1,0 +1,6 @@
+transaction_id,business_unit,product_id,customer_id,quantity,total_price,transaction_date,payment_method
+T001,BU_US,P001,C001,2,5.00,2024-09-22 08:30:00,credit_card
+T002,BU_CA,P002,C002,1,3.50,2024-09-22 09:15:00,debit_card
+T003,BU_MX,P003,C001,4,12.00,2024-09-22 10:00:00,cash
+T004,BU_BR,P001,C003,3,7.50,2024-09-22 11:45:00,credit_card
+T005,BU_US,P002,C002,5,17.50,2024-09-22 13:00:00,credit_card

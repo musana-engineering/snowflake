@@ -1,73 +1,175 @@
-resource "snowflake_database" "orders" {
-  name = "DB_ORDERS"
+resource "snowflake_database" "main" {
+  name = "GLOBO_LATTE_DB"
 }
 
-resource "snowflake_database" "inventory" {
-  name = "DB_INVENTORY"
+resource "snowflake_schema" "sales_data" {
+  database = snowflake_database.main.name
+  name     = "SALES_DATA"
 }
 
 resource "snowflake_warehouse" "warehouse" {
-  name           = "WH_ORDERS"
-  comment        = "Orders Warehouse"
+  name           = "GLOBO_LATTE_WH"
+  comment        = "Sales Data Warehouse"
   warehouse_size = "small"
 }
 
-resource "snowflake_schema" "orders" {
-  database            = snowflake_database.orders.name
-  name                = "HOLDING"
-  data_retention_days = 1
+# Sales_Transactions Table
+resource "snowflake_table" "sales_transactions" {
+  name     = "SALES_TRANSACTIONS"
+  database = snowflake_database.main.name
+  schema   = snowflake_schema.sales_data.name
+
+  column {
+    name     = "TRANSACTION_ID"
+    type     = "STRING"
+    nullable = false
+  }
+
+  column {
+    name     = "BUSINESS_UNIT"
+    type     = "STRING"
+    nullable = true
+  }
+
+  column {
+    name     = "PRODUCT_ID"
+    type     = "STRING"
+    nullable = true
+  }
+
+  column {
+    name     = "CUSTOMER_ID"
+    type     = "STRING"
+    nullable = true
+  }
+
+  column {
+    name     = "QUANTITY"
+    type     = "INTEGER"
+    nullable = true
+  }
+
+  column {
+    name     = "TOTAL_PRICE"
+    type     = "FLOAT"
+    nullable = true
+  }
+
+  column {
+    name     = "TRANSACTION_DATE"
+    type     = "TIMESTAMP"
+    nullable = true
+  }
+
+  column {
+    name     = "PAYMENT_METHOD"
+    type     = "STRING"
+    nullable = true
+  }
 }
 
-resource "snowflake_table" "orders" {
-  database                    = snowflake_schema.orders.database
-  schema                      = snowflake_schema.Orders.name
-  name                        = "table"
-  comment                     = "A table."
-  cluster_by                  = ["to_date(DATE)"]
-  data_retention_time_in_days = snowflake_schema.schema.data_retention_time_in_days
-  change_tracking             = false
+# Products Table
+resource "snowflake_table" "products" {
+  name     = "PRODUCTS"
+  database = snowflake_database.main.name
+  schema   = snowflake_schema.sales_data.name
 
   column {
-    name     = "id"
-    type     = "int"
-    nullable = true
-
-    default {
-      sequence = snowflake_sequence.sequence.fully_qualified_name
-    }
-  }
-
-  column {
-    name     = "identity"
-    type     = "NUMBER(38,0)"
-    nullable = true
-
-    identity {
-      start_num = 1
-      step_num  = 3
-    }
-  }
-
-  column {
-    name     = "data"
-    type     = "text"
+    name     = "PRODUCT_ID"
+    type     = "STRING"
     nullable = false
-    collate  = "en-ci"
   }
 
   column {
-    name = "DATE"
-    type = "TIMESTAMP_NTZ(9)"
+    name     = "PRODUCT_NAME"
+    type     = "STRING"
+    nullable = true
   }
 
   column {
-    name    = "extra"
-    type    = "VARIANT"
-    comment = "extra data"
+    name     = "CATEGORY"
+    type     = "STRING"
+    nullable = true
   }
 
-  primary_key {
-    name = "my_key"
-    keys = ["data"]
+  column {
+    name     = "PRICE"
+    type     = "FLOAT"
+    nullable = true
   }
+
+  column {
+    name     = "STOCK_QUANTITY"
+    type     = "INTEGER"
+    nullable = true
+  }
+}
+
+# Customers Table
+resource "snowflake_table" "customers" {
+  name     = "CUSTOMERS"
+  database = snowflake_database.main.name
+  schema   = snowflake_schema.sales_data.name
+
+  column {
+    name     = "CUSTOMER_ID"
+    type     = "STRING"
+    nullable = false
+  }
+
+  column {
+    name     = "CUSTOMER_NAME"
+    type     = "STRING"
+    nullable = true
+  }
+
+  column {
+    name     = "EMAIL"
+    type     = "STRING"
+    nullable = true
+  }
+
+  column {
+    name     = "LOCATION"
+    type     = "STRING"
+    nullable = true
+  }
+}
+
+# Business_Units Table
+resource "snowflake_table" "business_units" {
+  name     = "BUSINESS_UNITS"
+  database = snowflake_database.main.name
+  schema   = snowflake_schema.sales_data.name
+
+  column {
+    name     = "BUSINESS_UNIT_ID"
+    type     = "STRING"
+    nullable = false
+  }
+
+  column {
+    name     = "COUNTRY"
+    type     = "STRING"
+    nullable = true
+  }
+
+  column {
+    name     = "UNIT_NAME"
+    type     = "STRING"
+    nullable = true
+  }
+}
+
+// File Format
+resource "snowflake_file_format" "csv_format" {
+  name     = "CSV_FORMAT"
+  database = snowflake_database.main.name
+  schema   = snowflake_schema.sales_data.name
+
+  format_type      = "CSV"
+  field_delimiter  = ","
+  skip_header      = 0
+  skip_blank_lines = true
+  compression      = "AUTO"
 }

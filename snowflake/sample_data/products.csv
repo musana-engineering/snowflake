@@ -1,0 +1,6 @@
+product_id,product_name,category,price,stock_quantity
+P001,Espresso,Beverage,2.50,100
+P002,Croissant,Pastry,3.50,50
+P003,Latte,Beverage,3.00,75
+P004,Mocha,Beverage,3.75,60
+P005,Chocolate Cake,Pastry,4.25,30
