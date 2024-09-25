@@ -1,0 +1,146 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: snowflake-data-ingestion
+  namespace: argo-events
+spec:
+  eventBusName: eventbus-main
+  volumes: 
+    - name: ceplatform
+      secret: 
+        secretName: ceplatform
+  template:
+    serviceAccountName: sa-argo-workflow
+  dependencies:
+    - name: azure-events-hub
+      eventSourceName: azure-events-hub
+      eventBusName: eventbus-main
+      eventName: ceplatform
+  triggers:
+    - template:
+        name: snowflake-data-ingestion
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: snowflake-data-ingestion-
+                namespace: argo-events
+              spec:
+                entrypoint: pipeline
+                serviceAccountName: sa-argo-workflow
+                arguments:
+                  parameters:
+                    - name: body
+                      value: "placeholder"       
+                templates:
+                  - name: pipeline
+                    dag: 
+                      tasks:  
+                        - name: create-external-stage
+                          template: create-external-stage
+                          arguments:
+                            parameters:
+                              - name: body
+                                value: "{{workflow.parameters.body}}"
+                      
+                        - name: load-data
+                          template: load-data
+                          dependencies:
+                            - create-external-stage
+                        
+                        - name: validate-load
+                          template: validate-load
+                          dependencies:
+                            - load-data
+
+                        - name: cleanup-stage
+                          template: cleanup-stage
+                          dependencies:
+                            - validate-load
+
+                  - name: create-external-stage
+                    serviceAccountName: sa-argo-workflow   
+                    script:
+                      imagePullPolicy: "Always"
+                      image: rpengineering.azurecr.io/docker/cloudengineering/tools/ceplatformargo:v2.0.0
+                      command: [/bin/bash]
+                      source: |
+                        
+                        export DATA={{workflow.parameters.body}}
+                        export DECODED_DATA=$(echo "$DATA" | base64 --decode)
+
+                        echo "****************************** PRINT THE FILE URL ******************************"
+                        FILE_URL=$(echo "$DECODED_DATA" | jq -r '.[0].data.url')
+                        echo "The FILE URL IS $FILE_URL"
+
+                        echo "Creating named external stage SALES_TRANSACTIONS..."
+                        snowsql -q "SHOW DATABASES;"
+
+                        #snowsql -q "
+                        #USE SCHEMA GLOBO_LATTE_DB.SALES_DATA;
+                        #CREATE STAGE sales_transactions
+                        #  STORAGE_INTEGRATION = azure_blob_storage
+                        #  URL = 'azure://sagblatte.blob.core.windows.net/sfingestion/'
+                        #  FILE_FORMAT = CSV_FORMAT;"
+
+                  - name: load-data
+                    serviceAccountName: sa-argo-workflow   
+                    script:
+                      imagePullPolicy: "Always"
+                      image: rpengineering.azurecr.io/docker/cloudengineering/tools/ceplatformargo:v2.0.0
+                      command: [/bin/bash]
+                      source: |
+                        
+                        export DATA={{workflow.parameters.body}}
+                        export DECODED_DATA=$(echo "$DATA" | base64 --decode)
+
+                        echo "****************************** PRINT THE FILE URL ******************************"
+                        FILE_URL=$(echo "$DECODED_DATA" | jq -r '.[0].data.url')
+                        echo "The FILE URL IS $FILE_URL"
+
+                        echo "Creating named external stage SALES_TRANSACTIONS..."
+                        snowsql -q "SHOW DATABASES;"
+
+                        #snowsql -q "
+                        #USE SCHEMA GLOBO_LATTE_DB.SALES_DATA;
+                        #CREATE STAGE sales_transactions
+                        #  STORAGE_INTEGRATION = azure_blob_storage
+                        #  URL = 'azure://sagblatte.blob.core.windows.net/sfingestion/'
+                        #  FILE_FORMAT = CSV_FORMAT;"
+
+                  - name: validate-load
+                    serviceAccountName: sa-argo-workflow   
+                    script:
+                      imagePullPolicy: "Always"
+                      image: rpengineering.azurecr.io/docker/cloudengineering/tools/ceplatformargo:v2.0.0
+                      command: [/bin/bash]
+                      source: |
+                        
+                        echo "Creating named external stage SALES_TRANSACTIONS..."
+                        snowsql -q "SHOW DATABASES;"
+
+                  - name: cleanup-stage
+                    serviceAccountName: sa-argo-workflow   
+                    script:
+                      imagePullPolicy: "Always"
+                      image: rpengineering.azurecr.io/docker/cloudengineering/tools/ceplatformargo:v2.0.0
+                      command: [/bin/bash]
+                      source: |
+                        
+                        echo "Show tables in the global database"
+                        snowsql -q "
+                        USE DATABASE GLOBO_LATTE_DB;
+                        USE SCHEMA SALES_DATA;
+                        SHOW TABLES;"
+
+          parameters:
+            - src:
+                dependencyName: azure-events-hub
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+
+
+
