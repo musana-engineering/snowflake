@@ -1,0 +1,139 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: snowflake-data-ingestion
+  namespace: argo-events
+spec:
+  eventBusName: eventbus-main
+  template:
+    serviceAccountName: sa-argo-workflow
+  dependencies:
+    - name: azure-events-hub
+      eventSourceName: azure-events-hub
+      eventBusName: eventbus
+      eventName: snowflake
+  triggers:
+    - template:
+        name: snowflake-data-ingestion
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: snowflake-data-ingestion-
+                namespace: argo-events
+              spec:
+                entrypoint: pipeline
+                serviceAccountName: sa-argo-workflow
+                arguments:
+                  parameters:
+                    - name: body
+                      value: "placeholder"       
+                templates:
+                  - name: pipeline
+                    dag: 
+                      tasks:  
+                        - name: create-external-stage
+                          template: create-external-stage
+                          arguments:
+                            parameters:
+                              - name: body
+                                value: "{{workflow.parameters.body}}"
+                      
+                        - name: load-data
+                          template: load-data
+                          dependencies:
+                            - create-external-stage
+                        
+                        - name: validate-load
+                          template: validate-load
+                          dependencies:
+                            - load-data
+
+                        - name: cleanup-stage
+                          template: cleanup-stage
+                          dependencies:
+                            - validate-load
+
+                  - name: create-external-stage
+                    serviceAccountName: sa-argo-workflow   
+                    script:
+                      imagePullPolicy: "Always"
+                      image: musanaengineering/platformtools:snowsql:1.0.0
+                      command: [/bin/bash]
+                      source: |
+                        
+                        export DATA={{workflow.parameters.body}}
+                        export DECODED_DATA=$(echo "$DATA" | base64 --decode)
+
+                        echo "****************************** PRINT THE FILE URL ******************************"
+                        FILE_URL=$(echo "$DECODED_DATA" | jq -r '.[0].data.url')
+                        echo "The FILE URL IS $FILE_URL"
+
+                        snowsql -q "
+                        CREATE SCHEMA IF NOT EXISTS GLOBO_LATTE_DB.SALES_DATA;
+
+                        CREATE OR REPLACE FILE FORMAT GLOBO_LATTE_DB.SALES_DATA.CSV_FILE_FORMAT
+                          TYPE = 'CSV'
+                          FIELD_OPTIONALLY_ENCLOSED_BY = '\"'
+                          SKIP_HEADER = 1
+                          NULL_IF = ('NULL', 'null', '')
+                          FIELD_DELIMITER = ','
+                          TRIM_SPACE = TRUE;
+
+                        CREATE STAGE IF NOT EXISTS GLOBO_LATTE_DB.SALES_DATA.SALES_DATA_STAGE
+                          STORAGE_INTEGRATION = AZURE_BLOB_STORAGE
+                          URL = 'azure://saceplatform.blob.core.windows.net/sfingestion/'
+                          FILE_FORMAT = GLOBO_LATTE_DB.SALES_DATA.CSV_FILE_FORMAT;
+                        "
+                        
+                  - name: load-data
+                    serviceAccountName: sa-argo-workflow   
+                    script:
+                      imagePullPolicy: "Always"
+                      image: musanaengineering/platformtools:snowsql:1.0.0
+                      command: [/bin/bash]
+                      source: |
+                        
+                        echo "Loading data into table"
+                        snowsql -q "
+                        COPY INTO GLOBO_LATTE_DB.SALES_DATA.SALES_TRANSACTIONS
+                        FROM @GLOBO_LATTE_DB.SALES_DATA.SALES_DATA_STAGE;"
+
+                  - name: validate-load
+                    serviceAccountName: sa-argo-workflow   
+                    script:
+                      imagePullPolicy: "Always"
+                      image: musanaengineering/platformtools:snowsql:1.0.0
+                      command: [/bin/bash]
+                      source: |
+                        
+                        echo "Validate that rows were successfully loaded."
+                        snowsql -q "SELECT * FROM GLOBO_LATTE_DB.SALES_DATA.SALES_TRANSACTIONS;"
+
+                  - name: cleanup-stage
+                    serviceAccountName: sa-argo-workflow   
+                    script:
+                      imagePullPolicy: "Always"
+                      image: musanaengineering/platformtools:snowsql:1.0.0
+                      command: [/bin/bash]
+                      source: |
+                        
+                        echo "Dropping stage to cleanup..."
+                        snowsql -q "
+                        DROP STAGE IF EXISTS GLOBO_LATTE_DB.SALES_DATA.SALES_DATA_STAGE;
+                        "
+
+          parameters:
+            - src:
+                dependencyName: azure-events-hub
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+
+
+
+
+
+
